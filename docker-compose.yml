@@ -24,6 +24,7 @@ services:
   # ── Ollama — local LLM server ────────────────────────────────────────────
   ollama:
     image: cgr.dev/chainguard-private/ollama:latest
+    platform: linux/amd64
     restart: unless-stopped
     volumes:
       - ollama_data:/home/nonroot/.ollama
@@ -42,6 +43,7 @@ services:
   # restart: no — this is a one-shot init job, not a persistent service.
   model-init:
     image: cgr.dev/chainguard-private/ollama:latest-dev
+    platform: linux/amd64
     restart: "no"
     environment:
       OLLAMA_HOST: http://ollama:11434
@@ -54,6 +56,7 @@ services:
   # ── Open WebUI — browser-based chat UI ──────────────────────────────────
   openwebui:
     image: cgr.dev/chainguard-private/openwebui:latest
+    platform: linux/amd64
     restart: unless-stopped
     volumes:
       - openwebui_data:/app/backend/data
@@ -79,6 +82,7 @@ services:
       context: ./services/sentiment-api
       dockerfile: Dockerfile
     image: ${PROJECT_NAME:-chainguard-demo}/sentiment-api:latest
+    platform: linux/amd64
     restart: unless-stopped
     ports:
       - "${SENTIMENT_PORT:-8000}:8000"
