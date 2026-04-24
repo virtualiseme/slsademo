@@ -93,7 +93,7 @@ jobs:
       # Exchange GitHub OIDC token for short-lived AWS credentials.
       # No AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY are stored anywhere.
       - name: Configure AWS Credentials (OIDC)
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v6
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
