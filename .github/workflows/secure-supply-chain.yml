@@ -103,7 +103,7 @@ jobs:
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
+        uses: docker/setup-buildx-action@v4
 
       # Build using Chainguard base image (defined in your Dockerfile).
       # Provenance and SBOM bake flags are off here — we generate them
