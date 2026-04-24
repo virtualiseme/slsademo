@@ -1,0 +1,100 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Chainguard AI Demo Stack
+#
+# Services:
+#   ollama        — LLM inference server (Chainguard hardened)
+#   model-init    — one-shot job that pulls the default model
+#   openwebui     — ChatGPT-style UI connecting to Ollama (Chainguard hardened)
+#   sentiment-api — DistilBERT sentiment analysis UI built on Chainguard PyTorch
+#
+# Quick start:
+#   cp .env.example .env
+#   docker compose up -d --build
+#   open http://localhost:3000   # Open WebUI — chat with the LLM
+#   open http://localhost:8000   # Sentiment analysis demo
+#
+# GPU (Nvidia): use the override file
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: chainguard-ai-demo
+
+services:
+
+  # ── Ollama — local LLM server ────────────────────────────────────────────
+  ollama:
+    image: cgr.dev/chainguard-private/ollama:latest
+    restart: unless-stopped
+    volumes:
+      - ollama_data:/home/nonroot/.ollama
+    ports:
+      - "${OLLAMA_PORT:-11434}:11434"
+    healthcheck:
+      # 'ollama list' exits 0 when the server is ready, non-zero otherwise
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12         # up to 2 minutes for cold start
+      start_period: 20s
+
+  # ── Model Init — pulls the chosen model then exits ───────────────────────
+  # Uses latest-dev (has the CLI) to call the running Ollama server.
+  # restart: no — this is a one-shot init job, not a persistent service.
+  model-init:
+    image: cgr.dev/chainguard-private/ollama:latest-dev
+    restart: "no"
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    # 'ollama pull' against the remote OLLAMA_HOST — no local daemon needed
+    command: ["ollama", "pull", "${OLLAMA_MODEL:-phi3:mini}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+
+  # ── Open WebUI — browser-based chat UI ──────────────────────────────────
+  openwebui:
+    image: cgr.dev/chainguard-private/openwebui:latest
+    restart: unless-stopped
+    volumes:
+      - openwebui_data:/app/backend/data
+    ports:
+      - "${WEBUI_PORT:-3000}:8080"
+    environment:
+      OLLAMA_BASE_URL: http://ollama:11434
+      WEBUI_AUTH: "false"           # Disable login for demo; enable for production
+      WEBUI_NAME: "${WEBUI_NAME:-Chainguard AI Demo}"
+    depends_on:
+      ollama:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+  # ── Sentiment API — FastAPI + DistilBERT on Chainguard PyTorch ───────────
+  sentiment-api:
+    build:
+      context: ./services/sentiment-api
+      dockerfile: Dockerfile
+    image: ${PROJECT_NAME:-chainguard-demo}/sentiment-api:latest
+    restart: unless-stopped
+    ports:
+      - "${SENTIMENT_PORT:-8000}:8000"
+    environment:
+      TRANSFORMERS_OFFLINE: "1"     # Use model baked into the image at build time
+      HF_HOME: /model-cache
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 30s
+
+# ─────────────────────────────────────────────────────────────────────────────
+volumes:
+  ollama_data:
+    name: chainguard-demo-ollama
+  openwebui_data:
+    name: chainguard-demo-openwebui

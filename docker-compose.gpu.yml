@@ -1,0 +1,35 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# GPU override — Nvidia CUDA
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.gpu.yml up -d --build
+#
+# Prerequisites:
+#   - Nvidia drivers installed on the host
+#   - nvidia-container-toolkit installed
+#     https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/install-guide.html
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  ollama:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+    environment:
+      # With a GPU, run a larger, more capable model
+      OLLAMA_MODEL: "${OLLAMA_MODEL:-llama3.2:8b}"
+
+  sentiment-api:
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+    environment:
+      CUDA_VISIBLE_DEVICES: "0"
