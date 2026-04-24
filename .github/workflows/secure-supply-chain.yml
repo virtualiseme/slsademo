@@ -198,7 +198,8 @@ jobs:
       actions: read
       id-token: write
       contents: write   # Required to upload provenance to release assets
-      packages: write   # Required by slsa-github-generator reusable workflow    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+      packages: write   # Required by slsa-github-generator reusable workflow
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
     with:
       image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}
       digest: ${{ needs.build-sign-push.outputs.image-digest }}
