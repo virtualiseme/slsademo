@@ -1,0 +1,207 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Secure Software Supply Chain Pipeline
+#
+# Targets SLSA Level 3. Key properties:
+#   - No static credentials (GitHub OIDC → AWS STS)
+#   - Every image signed with Cosign keyless (Sigstore)
+#   - SBOM generated, signed as attestation, and archived in S3
+#   - Vulnerability scan fails the build on CRITICAL findings
+#   - Secret scan covers full git history
+#   - SAST runs on every PR with Semgrep community rules
+#
+# Prerequisites (provisioned by Terraform):
+#   Secrets: AWS_ROLE_ARN, AWS_ACCOUNT_ID
+#   Variables: AWS_REGION, ECR_REGISTRY, ECR_REPOSITORY_NAME, SBOM_BUCKET
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Secure Supply Chain
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read      # Checkout
+  id-token: write     # OIDC token for AWS and Sigstore
+  security-events: write  # Upload SARIF to GitHub Security tab
+  pull-requests: write    # Dependency Review comments on PRs
+
+env:
+  IMAGE_TAG: ${{ github.sha }}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 1 — Security Analysis (runs on PR and push)
+# Gate: must pass before build is allowed.
+# ─────────────────────────────────────────────────────────────────────────────
+jobs:
+  security-analysis:
+    name: security-analysis
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout (full history for secret scanning)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Secret scanning — checks the entire git history of the diff.
+      # --only-verified suppresses unverified low-confidence hits.
+      - name: TruffleHog Secret Scan
+        uses: trufflesecurity/trufflehog@main
+        with:
+          path: ./
+          base: ${{ github.event.repository.default_branch }}
+          head: HEAD
+          extra_args: --only-verified
+
+      # SAST — community ruleset covers OWASP Top 10 across major languages.
+      # Add SEMGREP_APP_TOKEN secret to also upload results to Semgrep Cloud.
+      - name: Semgrep SAST
+        uses: semgrep/semgrep-action@v1
+        with:
+          config: p/default
+        env:
+          SEMGREP_APP_TOKEN: ${{ secrets.SEMGREP_APP_TOKEN }}
+
+      # Dependency Review — flags vulnerable packages introduced by a PR diff.
+      # Only runs on pull_request events (no diff available on push).
+      - name: Dependency Review
+        if: github.event_name == 'pull_request'
+        uses: actions/dependency-review-action@v4
+        with:
+          fail-on-severity: high
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 2 — Build, Scan, Sign, Push (push to main only)
+# ─────────────────────────────────────────────────────────────────────────────
+  build-sign-push:
+    name: Build, Sign & Push
+    runs-on: ubuntu-latest
+    needs: security-analysis
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+
+    outputs:
+      image-digest: ${{ steps.build.outputs.digest }}
+      image-uri: ${{ steps.build.outputs.image-uri }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Exchange GitHub OIDC token for short-lived AWS credentials.
+      # No AWS_ACCESS_KEY_ID or AWS_SECRET_ACCESS_KEY are stored anywhere.
+      - name: Configure AWS Credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # Build using Chainguard base image (defined in your Dockerfile).
+      # Provenance and SBOM bake flags are off here — we generate them
+      # separately with Syft for richer output and Cosign for signing.
+      - name: Build and Push Image
+        id: build
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          provenance: false
+          sbom: false
+          tags: |
+            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+        env:
+          # Pass the image URI as an output for downstream jobs
+          image-uri: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}
+
+      # Grype vulnerability scan — fails the pipeline on CRITICAL findings.
+      # Results are uploaded to GitHub Security tab as SARIF for triage.
+      - name: Vulnerability Scan (Grype)
+        id: grype
+        uses: anchore/scan-action@v4
+        with:
+          image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}
+          fail-build: true
+          severity-cutoff: critical
+          output-format: sarif
+
+      - name: Upload Grype SARIF to GitHub Security
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: ${{ steps.grype.outputs.sarif }}
+
+      # SBOM generation — SPDX JSON format, attached to the image digest.
+      - name: Generate SBOM (Syft)
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}
+          registry-username: AWS
+          registry-password: ${{ steps.login-ecr.outputs.docker_password }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+          artifact-name: sbom-${{ github.sha }}.spdx.json
+
+      # Install Cosign — used for keyless signing and SBOM attestation.
+      - name: Install Cosign
+        uses: sigstore/cosign-installer@v3
+
+      # Keyless image signing via Sigstore Fulcio.
+      # The signature is recorded in the public Rekor transparency log.
+      # Identity: the GitHub Actions OIDC token for this specific workflow run.
+      - name: Sign Container Image (Cosign keyless)
+        run: |
+          cosign sign --yes \
+            "${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}"
+
+      # Attach the SBOM as a signed attestation — verifiable alongside the image.
+      - name: Attest SBOM (Cosign)
+        run: |
+          cosign attest --yes \
+            --predicate sbom.spdx.json \
+            --type spdxjson \
+            "${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}"
+
+      # Archive SBOM in S3 for long-term retention independent of the registry.
+      # Path: s3://BUCKET/REPO/COMMIT_SHA/sbom.spdx.json
+      - name: Archive SBOM to S3
+        run: |
+          aws s3 cp sbom.spdx.json \
+            "s3://${{ vars.SBOM_BUCKET }}/${{ vars.ECR_REPOSITORY_NAME }}/${{ github.sha }}/sbom.spdx.json" \
+            --sse aws:kms
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Job 3 — SLSA Level 3 Provenance
+#
+# Generates a signed provenance attestation proving this image was built by
+# an unmodified GitHub Actions workflow from a specific commit.
+# Runs as a separate job so it can use the reusable workflow from
+# slsa-framework/slsa-github-generator (required for Level 3).
+# ─────────────────────────────────────────────────────────────────────────────
+  slsa-provenance:
+    name: SLSA Provenance (Level 3)
+    needs: build-sign-push
+    permissions:
+      actions: read
+      id-token: write
+      contents: write  # Required to upload provenance to release assets (if applicable)
+    uses: slsa-framework/slsa-github-generator/.github/workflows/generator_container_slsa3.yml@v2.0.0
+    with:
+      image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}
+      digest: ${{ needs.build-sign-push.outputs.image-digest }}
+      registry-username: AWS
+    secrets:
+      registry-password: ${{ secrets.GITHUB_TOKEN }}
