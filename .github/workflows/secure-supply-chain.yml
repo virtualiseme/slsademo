@@ -131,7 +131,7 @@ jobs:
       # Results are uploaded to GitHub Security tab as SARIF for triage.
       - name: Vulnerability Scan (Grype)
         id: grype
-        uses: anchore/scan-action@v7
+        uses: anchore/scan-action@v4
         with:
           image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}
           fail-build: true
