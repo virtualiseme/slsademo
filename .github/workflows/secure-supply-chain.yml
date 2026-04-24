@@ -111,7 +111,7 @@ jobs:
         id: build
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: services/sentiment-api
           push: true
           provenance: false
           sbom: false

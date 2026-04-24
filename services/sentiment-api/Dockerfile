@@ -17,6 +17,13 @@
 # ── Stage 1: dependency installation + model pre-fetch ───────────────────────
 FROM cgr.dev/chainguard-private/pytorch:latest-dev AS builder
 
+# Chainguard images default to the nonroot user. Switch to root to create
+# directories at the filesystem root and run pip install into them.
+USER root
+
+# Create target directories up front so pip has somewhere writable to install.
+RUN mkdir -p /deps /model-cache
+
 WORKDIR /build
 
 # Install only the extra packages — torch is already present in the base image
@@ -36,6 +43,8 @@ RUN python prefetch_model.py
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM cgr.dev/chainguard-private/pytorch:latest-dev
 
+USER root
+
 WORKDIR /app
 
 # Add the extra pip packages on top of the base PyTorch installation
@@ -51,6 +60,9 @@ COPY main.py .
 # Tell transformers to load from the baked-in cache (no network required)
 ENV HF_HOME=/model-cache \
     TRANSFORMERS_OFFLINE=1
+
+# Drop back to nonroot for runtime — principle of least privilege
+USER nonroot
 
 EXPOSE 8000
 
