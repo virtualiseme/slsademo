@@ -46,14 +46,13 @@ jobs:
         with:
           fetch-depth: 0
 
-      # Secret scanning — checks the entire git history of the diff.
+      # Secret scanning — auto-detects the event type:
+      #   PR:   scans only the diff between base and head
+      #   Push: scans commits introduced by the push
       # --only-verified suppresses unverified low-confidence hits.
       - name: TruffleHog Secret Scan
         uses: trufflesecurity/trufflehog@main
         with:
-          path: ./
-          base: ${{ github.event.repository.default_branch }}
-          head: HEAD
           extra_args: --only-verified
 
       # SAST — community ruleset covers OWASP Top 10 across major languages.
