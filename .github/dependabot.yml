@@ -1,0 +1,75 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Dependabot — automated dependency update PRs
+#
+# Copy this file to .github/dependabot.yml in each repository.
+#
+# These PRs flow through the full supply chain pipeline before merge,
+# so every update is scanned, signed, and attested automatically.
+#
+# Tip: For patch-level updates, configure auto-merge in your branch
+# protection settings once you have sufficient confidence in the pipeline.
+# ─────────────────────────────────────────────────────────────────────────────
+
+version: 2
+
+updates:
+  # ── GitHub Actions ─────────────────────────────────────────────────────────
+  # Keeps action versions pinned to the latest patch — prevents supply chain
+  # attacks on the CI pipeline itself.
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "06:00"
+      timezone: "Europe/London"
+    labels:
+      - dependencies
+      - github-actions
+    commit-message:
+      prefix: "ci"
+
+  # ── Docker / Container base images ─────────────────────────────────────────
+  # Chainguard images update frequently (often daily). Weekly is sufficient
+  # since Chainguard patches their images rapidly.
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: "Europe/London"
+    labels:
+      - dependencies
+      - docker
+    commit-message:
+      prefix: "build"
+
+  # ── Language dependencies ───────────────────────────────────────────────────
+  # Adjust package-ecosystem to match your stack:
+  #   pip        — Python
+  #   npm        — Node.js
+  #   gomod      — Go
+  #   maven      — Java (Maven)
+  #   gradle     — Java (Gradle)
+  #   cargo      — Rust
+  #   bundler    — Ruby
+  - package-ecosystem: pip
+    directory: /
+    schedule:
+      interval: weekly
+      day: tuesday
+      time: "06:00"
+      timezone: "Europe/London"
+    labels:
+      - dependencies
+      - python
+    # Separate minor/patch from major version bumps to reduce noise
+    groups:
+      patch-updates:
+        update-types:
+          - patch
+    commit-message:
+      prefix: "deps"
+    # Cap the number of open PRs — prevents overwhelming the review queue
+    open-pull-requests-limit: 10
