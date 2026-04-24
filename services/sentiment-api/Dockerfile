@@ -15,7 +15,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: dependency installation + model pre-fetch ───────────────────────
-FROM cgr.dev/chainguard/pytorch:latest-dev AS builder
+FROM cgr.dev/chainguard-private/pytorch:latest-dev AS builder
 
 WORKDIR /build
 
@@ -34,7 +34,7 @@ COPY prefetch_model.py .
 RUN python prefetch_model.py
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
-FROM cgr.dev/chainguard/pytorch:latest-dev
+FROM cgr.dev/chainguard-private/pytorch:latest-dev
 
 WORKDIR /app
 
