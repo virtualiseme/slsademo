@@ -104,8 +104,8 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # Authenticate to Chainguard private registry so the builder can pull
-      # the base image (cgr.dev/chainguard-private/*).
+      # Authenticate to Chainguard registry so the builder can pull
+      # the base image (cgr.dev/virtualiseme.net.au/*).
       # Add CHAINGUARD_USERNAME and CHAINGUARD_TOKEN as Actions secrets:
       #   Settings → Secrets and variables → Actions → New repository secret
       # Obtain a pull token from: console.enforce.dev → Settings → Pull tokens

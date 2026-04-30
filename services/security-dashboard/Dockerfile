@@ -1,4 +1,4 @@
-FROM cgr.dev/chainguard-private/python:latest-dev AS builder
+FROM cgr.dev/virtualiseme.net.au/python:latest-dev AS builder
 
 USER root
 RUN mkdir -p /deps
@@ -7,7 +7,7 @@ WORKDIR /build
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/deps -r requirements.txt
 
-FROM cgr.dev/chainguard-private/python:latest-dev
+FROM cgr.dev/virtualiseme.net.au/python:latest-dev
 
 USER root
 WORKDIR /app

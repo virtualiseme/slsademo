@@ -23,7 +23,7 @@ services:
 
   # ── Ollama — local LLM server ────────────────────────────────────────────
   ollama:
-    image: cgr.dev/chainguard-private/ollama:latest
+    image: cgr.dev/virtualiseme.net.au/ollama:latest
     platform: linux/amd64
     restart: unless-stopped
     volumes:
@@ -42,7 +42,7 @@ services:
   # Uses latest-dev (has the CLI) to call the running Ollama server.
   # restart: no — this is a one-shot init job, not a persistent service.
   model-init:
-    image: cgr.dev/chainguard-private/ollama:latest-dev
+    image: cgr.dev/virtualiseme.net.au/ollama:latest-dev
     platform: linux/amd64
     restart: "no"
     environment:
@@ -55,7 +55,7 @@ services:
 
   # ── Open WebUI — browser-based chat UI ──────────────────────────────────
   openwebui:
-    image: cgr.dev/chainguard-private/openwebui:latest
+    image: cgr.dev/virtualiseme.net.au/openwebui:latest
     platform: linux/amd64
     restart: unless-stopped
     volumes:
