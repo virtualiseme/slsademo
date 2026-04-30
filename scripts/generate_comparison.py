@@ -8,7 +8,7 @@ Usage:
         --standard  standard-scan.json \
         --chainguard chainguard-scan.json \
         --standard-image  "python:3.11-slim" \
-        --chainguard-image "cgr.dev/chainguard-private/pytorch:latest-dev" \
+        --chainguard-image "cgr.dev/virtualiseme.net.au/pytorch:latest-dev" \
         --standard-size-mb 168 \
         --chainguard-size-mb 104 \
         --out comparison-summary.json \
@@ -264,7 +264,7 @@ def main():
     p.add_argument("--standard",             required=True,  help="Path to standard image Grype JSON")
     p.add_argument("--chainguard",           required=True,  help="Path to Chainguard image Grype JSON")
     p.add_argument("--standard-image",       default="python:3.11-slim")
-    p.add_argument("--chainguard-image",     default="cgr.dev/chainguard-private/pytorch:latest-dev")
+    p.add_argument("--chainguard-image",     default="cgr.dev/virtualiseme.net.au/pytorch:latest-dev")
     p.add_argument("--standard-size-mb",     default=None,   help="Compressed image size in MB (from docker inspect)")
     p.add_argument("--chainguard-size-mb",   default=None,   help="Compressed image size in MB (from docker inspect)")
     p.add_argument("--out",                  default="comparison-summary.json")

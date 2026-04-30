@@ -1,4 +1,4 @@
-# Extra packages installed on top of cgr.dev/chainguard/pytorch
+# Extra packages installed on top of cgr.dev/virtualiseme.net.au/pytorch
 # torch is already present in the base image — do NOT list it here.
 
 fastapi>=0.115.0,<1.0.0

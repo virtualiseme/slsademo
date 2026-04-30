@@ -3,7 +3,7 @@
 #
 # Builds the same application twice:
 #   1. Standard upstream image  (python:3.11-slim)
-#   2. Chainguard hardened image (cgr.dev/chainguard-private/pytorch)
+#   2. Chainguard hardened image (cgr.dev/virtualiseme.net.au/pytorch)
 #
 # Scan results are:
 #   - Compared and summarised in the GitHub Actions job summary
@@ -136,7 +136,7 @@ jobs:
             --standard      standard-scan.json \
             --chainguard    chainguard-scan.json \
             --standard-image   "python:3.11-slim" \
-            --chainguard-image "cgr.dev/chainguard-private/pytorch:latest-dev" \
+            --chainguard-image "cgr.dev/virtualiseme.net.au/pytorch:latest-dev" \
             --standard-size-mb   "$STD_SIZE_MB" \
             --chainguard-size-mb "$CG_SIZE_MB" \
             --out comparison-summary.json \
