@@ -15,7 +15,7 @@
     "size_mb": 168
   },
   "chainguard": {
-    "image": "cgr.dev/chainguard-private/pytorch:latest-dev",
+    "image": "cgr.dev/virtualiseme.net.au/pytorch:latest-dev",
     "scan_passed": true,
     "package_count": 52,
     "score": 95,

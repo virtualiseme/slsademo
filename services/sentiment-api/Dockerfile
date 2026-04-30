@@ -10,24 +10,21 @@
 #
 # NOTE: Both stages use :latest-dev because the demo requires pip (to install
 # deps) at build time, and wget (for Docker's healthcheck) at runtime.
-# In a production hardening pass, switch the runtime to :latest and bake
-# wget into a custom layer, or use a TCP healthcheck instead.
 # ─────────────────────────────────────────────────────────────────────────────
 
 # ── Stage 1: dependency installation + model pre-fetch ───────────────────────
-FROM cgr.dev/chainguard-private/pytorch:latest-dev AS builder
+FROM cgr.dev/virtualiseme.net.au/pytorch:latest-dev AS builder
 
 # Chainguard images default to the nonroot user. Switch to root to create
 # directories at the filesystem root and run pip install into them.
 USER root
 
-# Create target directories up front so pip has somewhere writable to install.
 RUN mkdir -p /deps /model-cache
 
 WORKDIR /build
 
 # Install only the extra packages — torch is already present in the base image
-# so pip skips it, keeping /deps small (~300 MB vs ~2 GB with torch).
+# so pip skips it, keeping /deps small.
 COPY requirements.txt .
 RUN pip install --no-cache-dir --prefix=/deps -r requirements.txt
 
@@ -41,7 +38,7 @@ COPY prefetch_model.py .
 RUN python prefetch_model.py
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
-FROM cgr.dev/chainguard-private/pytorch:latest-dev
+FROM cgr.dev/virtualiseme.net.au/pytorch:latest-dev
 
 USER root
 
@@ -57,7 +54,6 @@ COPY --from=builder /model-cache /model-cache
 # Copy application last — changes here only invalidate this thin layer
 COPY main.py .
 
-# Tell transformers to load from the baked-in cache (no network required)
 ENV HF_HOME=/model-cache \
     TRANSFORMERS_OFFLINE=1
 

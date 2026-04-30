@@ -328,7 +328,7 @@ HTML = """<!DOCTYPE html>
       <div class="panel-header">
         <span class="panel-tag">Chainguard Hardened</span>
         <div class="panel-title">Chainguard PyTorch</div>
-        <div class="panel-image" id="cgImage">cgr.dev/chainguard-private/pytorch</div>
+        <div class="panel-image" id="cgImage">cgr.dev/virtualiseme.net.au/pytorch</div>
       </div>
       <div class="cve-total">
         <div class="cve-total-label">Total CVEs</div>
