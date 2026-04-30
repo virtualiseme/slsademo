@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# STANDARD UPSTREAM IMAGE — intentional "before" state
+#
+# This is the starting point for most teams: an official Python image from
+# Docker Hub with packages installed via pip.
+#
+# Used exclusively for CVE comparison against the Chainguard hardened image.
+# Do NOT use this image in production.
+# ─────────────────────────────────────────────────────────────────────────────
+
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY services/sentiment-api/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY services/sentiment-api/main.py .
+
+EXPOSE 8000
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
