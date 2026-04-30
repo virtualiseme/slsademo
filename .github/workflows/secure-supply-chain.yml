@@ -152,6 +152,7 @@ jobs:
           output-format: sarif
         env:
           GRYPE_DB_AUTO_UPDATE: "true"    # force fresh DB download — cached DB may be stale
+          GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
 
       - name: Upload Grype SARIF to GitHub Security
         if: always()
