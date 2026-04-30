@@ -1,0 +1,175 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Security Comparison Pipeline
+#
+# Builds the same application twice:
+#   1. Standard upstream image  (python:3.11-slim)
+#   2. Chainguard hardened image (cgr.dev/chainguard-private/pytorch)
+#
+# Scan results are:
+#   - Compared and summarised in the GitHub Actions job summary
+#   - Uploaded to S3 for the security dashboard to read
+#   - Published as CloudWatch custom metrics → Amazon Managed Grafana
+#   - Uploaded to GitHub Security tab (SARIF)
+#
+# Triggers:
+#   - workflow_dispatch (manual — run this during a live demo)
+#   - push to main when Dockerfiles or app code changes
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: Security Comparison
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - "Dockerfile.standard"
+      - "services/sentiment-api/**"
+
+permissions:
+  contents: read
+  id-token: write
+  security-events: write
+
+jobs:
+  compare:
+    name: Build & Compare Security Posture
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── AWS auth (OIDC — no stored credentials) ───────────────────────────
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      # ── Chainguard registry auth ───────────────────────────────────────────
+      - name: Login to Chainguard Registry
+        uses: docker/login-action@v3
+        with:
+          registry: cgr.dev
+          username: ${{ secrets.CHAINGUARD_USERNAME }}
+          password: ${{ secrets.CHAINGUARD_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      # ── Build standard (upstream) image ───────────────────────────────────
+      - name: Build Standard Image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile.standard
+          push: false
+          load: true
+          tags: sentiment-standard:latest
+          cache-from: type=gha,scope=standard
+          cache-to: type=gha,scope=standard,mode=max
+
+      # ── Build Chainguard image ─────────────────────────────────────────────
+      - name: Build Chainguard Image
+        uses: docker/build-push-action@v5
+        with:
+          context: services/sentiment-api
+          file: services/sentiment-api/Dockerfile
+          push: false
+          load: true
+          tags: sentiment-chainguard:latest
+          cache-from: type=gha,scope=chainguard
+          cache-to: type=gha,scope=chainguard,mode=max
+
+      # ── Capture image sizes ────────────────────────────────────────────────
+      - name: Capture Image Sizes
+        run: |
+          STD_BYTES=$(docker inspect sentiment-standard:latest --format='{{.Size}}')
+          CG_BYTES=$(docker inspect sentiment-chainguard:latest --format='{{.Size}}')
+          echo "STD_SIZE_MB=$(( STD_BYTES / 1048576 ))" >> "$GITHUB_ENV"
+          echo "CG_SIZE_MB=$(( CG_BYTES / 1048576 ))"  >> "$GITHUB_ENV"
+          echo "Standard image:   $(( STD_BYTES / 1048576 )) MB"
+          echo "Chainguard image: $(( CG_BYTES  / 1048576 )) MB"
+
+      # ── Scan both images with Grype ────────────────────────────────────────
+      - name: Install Grype
+        uses: anchore/scan-action/download-grype@v4
+
+      - name: Scan Standard Image
+        run: |
+          grype sentiment-standard:latest \
+            -o json \
+            --file standard-scan.json
+          echo "Standard image: $(jq '.matches | length' standard-scan.json) total CVEs"
+
+      - name: Scan Chainguard Image
+        run: |
+          grype sentiment-chainguard:latest \
+            -o json \
+            --file chainguard-scan.json
+          echo "Chainguard image: $(jq '.matches | length' chainguard-scan.json) total CVEs"
+
+      # ── Also upload SARIF for GitHub Security tab ──────────────────────────
+      - name: Grype SARIF — Standard
+        run: grype sentiment-standard:latest -o sarif --file standard-scan.sarif
+
+      - name: Grype SARIF — Chainguard
+        run: grype sentiment-chainguard:latest -o sarif --file chainguard-scan.sarif
+
+      - name: Upload Standard SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: standard-scan.sarif
+          category: standard-image
+
+      - name: Upload Chainguard SARIF
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: chainguard-scan.sarif
+          category: chainguard-image
+
+      # ── Generate comparison summary + publish CloudWatch metrics ──────────
+      - name: Generate Comparison Summary & Publish Metrics
+        run: |
+          python scripts/generate_comparison.py \
+            --standard      standard-scan.json \
+            --chainguard    chainguard-scan.json \
+            --standard-image   "python:3.11-slim" \
+            --chainguard-image "cgr.dev/chainguard-private/pytorch:latest-dev" \
+            --standard-size-mb   "$STD_SIZE_MB" \
+            --chainguard-size-mb "$CG_SIZE_MB" \
+            --out comparison-summary.json \
+            --github-summary \
+            --publish-cloudwatch \
+            --aws-region "${{ vars.AWS_REGION }}"
+
+      # ── Append Grafana link to job summary (if workspace URL is set) ───────
+      - name: Append Grafana Link
+        if: vars.GRAFANA_URL != ''
+        run: |
+          cat >> "$GITHUB_STEP_SUMMARY" <<EOF
+
+          ---
+          📊 **[Open Grafana Dashboard](${{ vars.GRAFANA_URL }})** — live CVE trends & Inspector v2 findings
+          EOF
+
+      # ── Upload everything to S3 ────────────────────────────────────────────
+      - name: Upload Scan Results to S3
+        run: |
+          PREFIX="s3://${{ vars.SBOM_BUCKET }}/comparison/latest"
+          aws s3 cp standard-scan.json      "${PREFIX}/standard-scan.json"    --sse aws:kms
+          aws s3 cp chainguard-scan.json    "${PREFIX}/chainguard-scan.json"  --sse aws:kms
+          aws s3 cp comparison-summary.json "${PREFIX}/summary.json"          --sse aws:kms
+          echo "Results uploaded to ${PREFIX}"
+
+      # ── Upload raw scans as workflow artifacts ─────────────────────────────
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: security-comparison-${{ github.sha }}
+          path: |
+            standard-scan.json
+            chainguard-scan.json
+            comparison-summary.json
+          retention-days: 30

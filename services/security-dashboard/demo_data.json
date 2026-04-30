@@ -1,0 +1,39 @@
+{
+  "generated_at": "2026-04-30T10:00:00Z",
+  "note": "Demo data — run the Security Comparison workflow to replace with real scan results",
+  "standard": {
+    "image": "python:3.11-slim",
+    "scan_passed": false,
+    "package_count": 189,
+    "score": 28,
+    "total": 222,
+    "critical": 6,
+    "high": 43,
+    "medium": 98,
+    "low": 62,
+    "negligible": 13,
+    "size_mb": 168
+  },
+  "chainguard": {
+    "image": "cgr.dev/chainguard-private/pytorch:latest-dev",
+    "scan_passed": true,
+    "package_count": 52,
+    "score": 95,
+    "total": 4,
+    "critical": 0,
+    "high": 1,
+    "medium": 2,
+    "low": 1,
+    "negligible": 0,
+    "size_mb": 104
+  },
+  "delta": {
+    "total_reduction_pct": 98.2,
+    "critical_reduction_pct": 100.0,
+    "high_reduction_pct": 97.7,
+    "package_reduction_pct": 72.5,
+    "score_improvement": 67,
+    "size_reduction_pct": 38.1,
+    "engineering_hours_saved": 439.0
+  }
+}
