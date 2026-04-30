@@ -96,6 +96,28 @@ services:
       retries: 6
       start_period: 30s
 
+  # ── Security Dashboard — CVE comparison: standard vs Chainguard ──────────
+  security-dashboard:
+    build:
+      context: ./services/security-dashboard
+      dockerfile: Dockerfile
+    image: ${PROJECT_NAME:-chainguard-demo}/security-dashboard:latest
+    restart: unless-stopped
+    ports:
+      - "${DASHBOARD_PORT:-8080}:8080"
+    environment:
+      # Set these to load live scan results from S3 instead of demo data
+      SBOM_BUCKET:  "${SBOM_BUCKET:-}"
+      AWS_REGION:   "${AWS_REGION:-ap-southeast-2}"
+      # Set to your AMG workspace dashboard URL to enable the Grafana button
+      GRAFANA_URL:  "${GRAFANA_URL:-}"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8080/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
 # ─────────────────────────────────────────────────────────────────────────────
 volumes:
   ollama_data:
