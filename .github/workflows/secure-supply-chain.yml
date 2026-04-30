@@ -125,6 +125,7 @@ jobs:
         with:
           context: services/sentiment-api
           push: true
+          load: true    # also load into local Docker daemon so Grype can scan without ECR pull
           provenance: false
           sbom: false
           # ECR uses IMMUTABLE tags — never push 'latest' or any mutable alias.
@@ -139,19 +140,20 @@ jobs:
           image-uri: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}
 
       # Grype vulnerability scan — fails the pipeline on CRITICAL findings.
-      # Results are uploaded to GitHub Security tab as SARIF for triage.
+      # Scans the locally-loaded image (avoids needing ecr:BatchGetImage to pull back
+      # from ECR). Results uploaded to GitHub Security tab as SARIF.
       - name: Vulnerability Scan (Grype)
         id: grype
         uses: anchore/scan-action@v4
         with:
-          image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}
+          image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}:sha-${{ env.IMAGE_TAG }}
           fail-build: true
           severity-cutoff: critical
           output-format: sarif
 
       - name: Upload Grype SARIF to GitHub Security
         if: always()
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: ${{ steps.grype.outputs.sarif }}
 
