@@ -21,6 +21,13 @@ USER root
 
 RUN mkdir -p /deps /model-cache
 
+# Chainguard images default to the nonroot user. Switch to root to create
+# directories at the filesystem root and run pip install into them.
+USER root
+
+# Create target directories up front so pip has somewhere writable to install.
+RUN mkdir -p /deps /model-cache
+
 WORKDIR /build
 
 # Install only the extra packages — torch is already present in the base image
@@ -39,6 +46,8 @@ RUN python prefetch_model.py
 
 # ── Stage 2: runtime ──────────────────────────────────────────────────────────
 FROM cgr.dev/virtualiseme.net.au/pytorch:latest-dev
+
+USER root
 
 USER root
 
