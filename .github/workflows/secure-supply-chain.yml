@@ -162,6 +162,9 @@ jobs:
       # SBOM generation — SPDX JSON format, attached to the image digest.
       - name: Generate SBOM (Syft)
         uses: anchore/sbom-action@v0
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
+          GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
         with:
           image: ${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}
           registry-username: AWS
