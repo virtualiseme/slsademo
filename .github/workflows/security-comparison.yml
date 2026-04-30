@@ -95,8 +95,14 @@ jobs:
       # ── Scan both images with Grype ────────────────────────────────────────
       - name: Install Grype
         uses: anchore/scan-action/download-grype@v4
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
+          GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
 
       - name: Scan Standard Image
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
+          GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
         run: |
           grype sentiment-standard:latest \
             -o json \
