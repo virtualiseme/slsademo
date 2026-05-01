@@ -24,7 +24,7 @@ on:
     branches: [main]
     paths:
       - "Dockerfile.standard"
-      - "services/sentiment-api/**"
+      - "services/security-dashboard/**"
 
 permissions:
   contents: read
@@ -150,8 +150,8 @@ jobs:
           python scripts/generate_comparison.py \
             --standard      standard-scan.json \
             --chainguard    chainguard-scan.json \
-            --standard-image   "python:3.11-slim" \
-            --chainguard-image "cgr.dev/virtualiseme.net.au/pytorch:latest-dev" \
+            --standard-image   "python:3.11" \
+            --chainguard-image "cgr.dev/virtualiseme.net.au/python:latest-dev" \
             --standard-size-mb   "$STD_SIZE_MB" \
             --chainguard-size-mb "$CG_SIZE_MB" \
             --out comparison-summary.json \
