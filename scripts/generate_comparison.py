@@ -247,6 +247,16 @@ def publish_cloudwatch(summary: dict, region: str):
             "Unit": "Count",
         })
 
+    # CVE reduction percentage — published directly so Grafana doesn't need
+    # a server-side math expression (which is unsupported in some AMG versions)
+    if delta.get("total_reduction_pct") is not None:
+        metric_data.append({
+            "MetricName": "CVEReductionPct",
+            "Dimensions": [],
+            "Value": float(delta["total_reduction_pct"]),
+            "Unit": "Percent",
+        })
+
     # Batch in groups of 20 (CloudWatch API limit)
     published = 0
     for i in range(0, len(metric_data), 20):

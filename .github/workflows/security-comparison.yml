@@ -47,6 +47,11 @@ jobs:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
           aws-region: ${{ vars.AWS_REGION }}
 
+      # ── ECR auth ──────────────────────────────────────────────────────────
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       # ── Chainguard registry auth ───────────────────────────────────────────
       - name: Login to Chainguard Registry
         uses: docker/login-action@v3
@@ -143,6 +148,23 @@ jobs:
         with:
           sarif_file: chainguard-scan.sarif
           category: chainguard-image
+
+      # ── Push to ECR comparison repo — triggers Inspector v2 on-push scan ──
+      # Tags: standard-latest and chainguard-latest (mutable — this is a
+      # comparison tool, not a production registry).
+      # Inspector v2 scans the pushed layers and routes findings to CloudWatch
+      # via EventBridge → Lambda, feeding the Grafana dashboard with real data.
+      - name: Push to ECR (standard-latest)
+        run: |
+          docker tag sentiment-standard:latest \
+            "${{ vars.ECR_REGISTRY }}/demo-comparison:standard-latest"
+          docker push "${{ vars.ECR_REGISTRY }}/demo-comparison:standard-latest"
+
+      - name: Push to ECR (chainguard-latest)
+        run: |
+          docker tag sentiment-chainguard:latest \
+            "${{ vars.ECR_REGISTRY }}/demo-comparison:chainguard-latest"
+          docker push "${{ vars.ECR_REGISTRY }}/demo-comparison:chainguard-latest"
 
       # ── Generate comparison summary + publish CloudWatch metrics ──────────
       - name: Generate Comparison Summary & Publish Metrics
