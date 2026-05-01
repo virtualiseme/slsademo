@@ -15,6 +15,7 @@ WORKDIR /app
 COPY services/security-dashboard/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
+
 COPY services/security-dashboard/main.py .
 
 EXPOSE 8000
