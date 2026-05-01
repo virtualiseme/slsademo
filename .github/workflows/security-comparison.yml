@@ -110,6 +110,9 @@ jobs:
           echo "Standard image: $(jq '.matches | length' standard-scan.json) total CVEs"
 
       - name: Scan Chainguard Image
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
+          GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
         run: |
           grype sentiment-chainguard:latest \
             -o json \
