@@ -121,9 +121,15 @@ jobs:
 
       # ── Also upload SARIF for GitHub Security tab ──────────────────────────
       - name: Grype SARIF — Standard
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
+          GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
         run: grype sentiment-standard:latest -o sarif --file standard-scan.sarif
 
       - name: Grype SARIF — Chainguard
+        env:
+          GRYPE_DB_AUTO_UPDATE: "true"
+          GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
         run: grype sentiment-chainguard:latest -o sarif --file chainguard-scan.sarif
 
       - name: Upload Standard SARIF
