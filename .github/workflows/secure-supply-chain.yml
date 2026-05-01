@@ -181,18 +181,27 @@ jobs:
       # Keyless image signing via Sigstore Fulcio.
       # The signature is recorded in the public Rekor transparency log.
       # Identity: the GitHub Actions OIDC token for this specific workflow run.
+      # Retry loop handles transient Rekor unavailability (rate limits, brief outages).
       - name: Sign Container Image (Cosign keyless)
         run: |
-          cosign sign --yes \
-            "${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}"
+          for attempt in 1 2 3; do
+            cosign sign --yes \
+              "${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}" \
+              && break
+            [ $attempt -lt 3 ] && { echo "Attempt $attempt failed — retrying in 30s..."; sleep 30; }
+          done
 
       # Attach the SBOM as a signed attestation — verifiable alongside the image.
       - name: Attest SBOM (Cosign)
         run: |
-          cosign attest --yes \
-            --predicate sbom.spdx.json \
-            --type spdxjson \
-            "${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}"
+          for attempt in 1 2 3; do
+            cosign attest --yes \
+              --predicate sbom.spdx.json \
+              --type spdxjson \
+              "${{ vars.ECR_REGISTRY }}/${{ vars.ECR_REPOSITORY_NAME }}@${{ steps.build.outputs.digest }}" \
+              && break
+            [ $attempt -lt 3 ] && { echo "Attempt $attempt failed — retrying in 30s..."; sleep 30; }
+          done
 
       # Archive SBOM in S3 for long-term retention independent of the registry.
       # Path: s3://BUCKET/REPO/COMMIT_SHA/sbom.spdx.json
