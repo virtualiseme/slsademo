@@ -74,7 +74,7 @@ jobs:
       - name: Build Chainguard Image
         uses: docker/build-push-action@v5
         with:
-          context: services/sentiment-api
+          context: services/security-dashboard
           file: services/security-dashboard/Dockerfile
           push: false
           load: true
