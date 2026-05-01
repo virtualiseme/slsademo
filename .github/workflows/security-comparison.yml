@@ -79,8 +79,8 @@ jobs:
           push: false
           load: true
           tags: sentiment-chainguard:latest
-          cache-from: type=gha,scope=chainguard
-          cache-to: type=gha,scope=chainguard,mode=max
+          cache-from: type=gha,scope=chainguard-dashboard
+          cache-to: type=gha,scope=chainguard-dashboard,mode=max
 
       # ── Capture image sizes ────────────────────────────────────────────────
       - name: Capture Image Sizes
