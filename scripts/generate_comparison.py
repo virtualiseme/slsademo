@@ -13,7 +13,7 @@ Usage:
         --chainguard-size-mb 104 \
         --out comparison-summary.json \
         --github-summary \
-        --publish-cloudwatch          # writes to SecurityDashboard namespace
+        --publish-cloudwatch          # writes to SecurityDashboard2 namespace
 """
 
 import argparse
@@ -174,7 +174,7 @@ def write_github_summary(summary: dict):
 
 
 def publish_cloudwatch(summary: dict, region: str):
-    """Publish comparison metrics to CloudWatch SecurityDashboard namespace."""
+    """Publish comparison metrics to CloudWatch SecurityDashboard2 namespace."""
     try:
         import boto3
         cw = boto3.client("cloudwatch", region_name=region)
@@ -261,12 +261,12 @@ def publish_cloudwatch(summary: dict, region: str):
     published = 0
     for i in range(0, len(metric_data), 20):
         cw.put_metric_data(
-            Namespace="SecurityDashboard",
+            Namespace="SecurityDashboard2",
             MetricData=metric_data[i : i + 20],
         )
         published += len(metric_data[i : i + 20])
 
-    log.info("Published %d metrics to CloudWatch namespace 'SecurityDashboard'", published)
+    log.info("Published %d metrics to CloudWatch namespace 'SecurityDashboard2'", published)
 
 
 def main():
@@ -279,7 +279,7 @@ def main():
     p.add_argument("--chainguard-size-mb",   default=None,   help="Compressed image size in MB (from docker inspect)")
     p.add_argument("--out",                  default="comparison-summary.json")
     p.add_argument("--github-summary",       action="store_true", help="Append Markdown table to GITHUB_STEP_SUMMARY")
-    p.add_argument("--publish-cloudwatch",   action="store_true", help="Push metrics to CloudWatch SecurityDashboard namespace")
+    p.add_argument("--publish-cloudwatch",   action="store_true", help="Push metrics to CloudWatch SecurityDashboard2 namespace")
     p.add_argument("--aws-region",           default=os.environ.get("AWS_REGION", "ap-southeast-2"))
     args = p.parse_args()
 
