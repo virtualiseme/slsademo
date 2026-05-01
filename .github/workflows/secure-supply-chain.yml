@@ -19,8 +19,16 @@ name: Secure Supply Chain
 on:
   push:
     branches: [main]
+    paths:
+      - "docker-compose.yml"
+      - "docker-compose.gpu.yml"
+      - "services/sentiment-api/**"
   pull_request:
     branches: [main]
+    paths:
+      - "docker-compose.yml"
+      - "docker-compose.gpu.yml"
+      - "services/sentiment-api/**"
 
 permissions:
   contents: read      # Checkout
