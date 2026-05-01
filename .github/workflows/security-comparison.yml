@@ -75,7 +75,7 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: services/sentiment-api
-          file: services/sentiment-api/Dockerfile
+          file: services/security-dashboard/Dockerfile
           push: false
           load: true
           tags: sentiment-chainguard:latest
