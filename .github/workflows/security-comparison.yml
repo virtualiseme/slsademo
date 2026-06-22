@@ -138,13 +138,13 @@ jobs:
         run: grype sentiment-chainguard:latest -o sarif --file chainguard-scan.sarif
 
       - name: Upload Standard SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: standard-scan.sarif
           category: standard-image
 
       - name: Upload Chainguard SARIF
-        uses: github/codeql-action/upload-sarif@v3
+        uses: github/codeql-action/upload-sarif@v4
         with:
           sarif_file: chainguard-scan.sarif
           category: chainguard-image
