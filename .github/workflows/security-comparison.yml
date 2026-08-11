@@ -99,7 +99,7 @@ jobs:
 
       # ── Scan both images with Grype ────────────────────────────────────────
       - name: Install Grype
-        uses: anchore/scan-action/download-grype@v4
+        uses: anchore/scan-action/download-grype@v7
         env:
           GRYPE_DB_AUTO_UPDATE: "true"
           GRYPE_DB_MAX_ALLOWED_BUILT_AGE: "1680h"
